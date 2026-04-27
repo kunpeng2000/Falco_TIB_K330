@@ -30,6 +30,7 @@ public:
     {
         nh_.param<std::string>("cloud_topic", cloud_topic_, "/velodyne_points");
         nh_.param<std::string>("data_dir", data_dir_, "/tmp/dataset_collection/");
+        nh_.param<std::string>("global_map_file", global_map_file_, "/tmp/pcd/");
         nh_.param<std::string>("map_frame", map_frame_, "map");
         nh_.param<std::string>("base_frame", base_frame_, "base_link");
         nh_.param<int>("avg_count", n_avg_, 5);
@@ -59,7 +60,7 @@ private:
     ros::Timer map_pub_timer_;
     tf2_ros::StaticTransformBroadcaster static_tf_broadcaster_;
     
-    std::string cloud_topic_, data_dir_, map_frame_, base_frame_;
+    std::string cloud_topic_, data_dir_, global_map_file_, map_frame_, base_frame_;
     int n_avg_;
     double global_map_pub_freq_;
     bool is_processing_, init_done_;
@@ -73,7 +74,7 @@ private:
     bool loadDatabaseAndMap() {
         std::string odom_file = data_dir_ + "ground_truth_odom.txt";
         std::string cloud_dir = data_dir_ + "clouds/";
-        std::string global_map_path = data_dir_ + "global_map.pcd";
+        std::string global_map_path = global_map_file_;
 
         ROS_INFO("Loading global map from: %s", global_map_path.c_str());
         if (pcl::io::loadPCDFile(global_map_path, *global_map_) == -1) {
@@ -126,9 +127,6 @@ private:
 
         pcl::PointCloud<pcl::PointXYZ>::Ptr current_frame(new pcl::PointCloud<pcl::PointXYZ>());
         pcl::fromROSMsg(*msg, *current_frame);
-
-        // 可选：在这里可以对 current_frame 进行降采样去噪，例如 VoxelGrid 滤波
-        // 这样可以进一步加快 ScanContext 和 FPFH 的计算速度
 
         Eigen::Matrix4f estimated_pose = Eigen::Matrix4f::Identity();
         

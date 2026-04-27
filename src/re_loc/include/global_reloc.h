@@ -7,6 +7,7 @@
 #include <pcl/search/kdtree.h>
 #include <pcl/registration/icp.h>
 #include <pcl/common/transforms.h>
+#include <pcl/filters/voxel_grid.h>
 #include <Eigen/Dense>
 
 #include "scan_context.h" 
@@ -60,12 +61,28 @@ public:
         // ICP Fine Alignment
         // ---------------------------------------------------------
         std::cout << "Running ICP fine alignment..." << std::endl;
+        // downsample
         pcl::PointCloud<pcl::PointXYZ>::Ptr local_initial_aligned(new pcl::PointCloud<pcl::PointXYZ>());
         pcl::transformPointCloud(*local_frame, *local_initial_aligned, initial_guess_pose);
 
+        pcl::PointCloud<pcl::PointXYZ>::Ptr local_downsampled(new pcl::PointCloud<pcl::PointXYZ>());
+        pcl::PointCloud<pcl::PointXYZ>::Ptr target_downsampled(new pcl::PointCloud<pcl::PointXYZ>());
+        pcl::VoxelGrid<pcl::PointXYZ> voxel_filter;
+        float leaf_size = 0.4f; 
+        voxel_filter.setLeafSize(leaf_size, leaf_size, leaf_size);
+
+        voxel_filter.setInputCloud(local_initial_aligned);
+        voxel_filter.filter(*local_downsampled);
+
+        voxel_filter.setInputCloud(submap); 
+        voxel_filter.filter(*target_downsampled);
+
+        std::cout << "Source points before/after: " << local_initial_aligned->size() << " -> " << local_downsampled->size() << std::endl;
+        std::cout << "Target points before/after: " << submap->size() << " -> " << target_downsampled->size() << std::endl;
+
         pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
-        icp.setInputSource(local_initial_aligned);
-        icp.setInputTarget(submap);               
+        icp.setInputSource(local_downsampled);
+        icp.setInputTarget(target_downsampled);               
         icp.setMaxCorrespondenceDistance(icp_thresh_); 
         icp.setMaximumIterations(icp_iters_);
 
@@ -93,9 +110,8 @@ private:
     int icp_iters_;
     double submap_radius_, icp_thresh_;
 
-    pcl::PointCloud<pcl::PointXYZ>::Ptr extractSubmap(
-        pcl::PointCloud<pcl::PointXYZ>::Ptr global_map, 
-        Eigen::Vector3f center) {
+    pcl::PointCloud<pcl::PointXYZ>::Ptr extractSubmap(pcl::PointCloud<pcl::PointXYZ>::Ptr global_map, 
+                                                      Eigen::Vector3f center) {
         pcl::PointCloud<pcl::PointXYZ>::Ptr submap(new pcl::PointCloud<pcl::PointXYZ>());
         pcl::search::KdTree<pcl::PointXYZ>::Ptr kdtree(new pcl::search::KdTree<pcl::PointXYZ>());
         kdtree->setInputCloud(global_map);
