@@ -1,8 +1,8 @@
 <launch>
-    <arg name="cloud_topic"         default="/pub_pcd" />
+    <arg name="cloud_topic"         default="/LIVO/current_cloud" />
     
     <arg name="data_dir"            default="$(find init_relocalizer)/map_data/" />
-    <arg name="global_map_file"     default="$(find fast_livo)/Log/PCD/all_raw_points.pcd" />
+    <arg name="global_map_file"     default="$(find fast_livo)/Log/PCD/all_downsampled_points.pcd" />
     
     <arg name="map_frame"           default="map" />
     <arg name="base_frame"          default="camera_init" />

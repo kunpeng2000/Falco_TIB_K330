@@ -3,5 +3,5 @@
 
     <node pkg="init_relocalizer" type="pub_pcd" name="pub_pcd_node" output="screen" args="$(arg pcd_file_path)" />
 
-    <param name="/use_sim_time" value="false" />
+    <param name="/use_sim_time" value="true" />
 </launch>

@@ -14,6 +14,6 @@
 
     <include file="$(find fast_livo)/launch/mapping_mid360.launch" />
 
-    <param name="/use_sim_time" value="true" />
+    <param name="/use_sim_time" value="false" />
 
 </launch>
