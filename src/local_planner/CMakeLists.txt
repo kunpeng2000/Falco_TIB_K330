@@ -11,7 +11,12 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
   sensor_msgs
+  nav_msgs
+  geometry_msgs
+  tf
+  tf2
   pcl_ros
+  pcl_conversions
 )
 
 find_package(PCL REQUIRED)
@@ -21,11 +26,16 @@ find_package(PCL REQUIRED)
 ###################################
 
 catkin_package(
-  CATKIN_DEPENDS
+CATKIN_DEPENDS
   roscpp
   std_msgs
   sensor_msgs
+  nav_msgs          
+  geometry_msgs     
+  tf                
+  tf2               
   pcl_ros
+  pcl_conversions   
 )
 
 ###########

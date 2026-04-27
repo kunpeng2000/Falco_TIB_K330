@@ -36,8 +36,9 @@ add_definitions(${PCL_DEFINITIONS})
 
 
 add_executable(re_loc 
-  src/re_loc.cpp 
-  # src/global_reloc.cpp
+  src/online_reloc.cpp 
+  src/global_reloc.cpp
+  src/scan_context.cpp
 )
 add_executable(save_data 
   src/save_pcd_odom.cpp 

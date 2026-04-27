@@ -1,3 +1,16 @@
+/**
+ * @file localPlanner.h
+ * @brief local planner for MobiRo @ tib_k331
+ * @author Alex Liu
+ * @author kunpeng fan (Modified)
+ * @copyright Copyright (c) 2026. Licensed under the MIT License.
+ * * @acknowledgement 
+ * this file is referenced and adapted from the following open-source project:
+ * Repository: https://github.com/HongbiaoZ/autonomous_exploration_development_environment
+ */
+
+#pragma once
+
 #include <math.h>
 #include <time.h>
 #include <stdio.h>

@@ -1,3 +1,14 @@
+/**
+ * @file localPlanner.cpp
+ * @brief local planner for MobiRo @ tib_k331
+ * @author Alex Liu
+ * @author kunpeng fan (Modified)
+ * @copyright Copyright (c) 2026. Licensed under the MIT License.
+ * * @acknowledgement 
+ * this file is referenced and adapted from the following open-source project:
+ * Repository: https://github.com/HongbiaoZ/autonomous_exploration_development_environment
+ */
+
 #include "localPlanner.h"
 
 namespace tib_k331_perception {
@@ -263,19 +274,21 @@ int localPlanner::readPlyHeader(FILE *filePtr){
 	while (strCur != "end_header") {
 		val = fscanf(filePtr, "%s", str);
 		if (val != 1) {
-		printf ("\nError reading input files, exit.\n\n");
-		exit(1);
+			printf ("\nError reading input files, exit.\n\n");
+			ros::shutdown();
+			return;
 		}
 
 		strLast = strCur;
 		strCur = std::string(str);
 
 		if (strCur == "vertex" && strLast == "element") {
-		val = fscanf(filePtr, "%d", &pointNum);
-		if (val != 1) {
-			printf ("\nError reading input files, exit.\n\n");
-			exit(1);
-		}
+			val = fscanf(filePtr, "%d", &pointNum);
+			if (val != 1) {
+				printf ("\nError reading input files, exit.\n\n");
+				ros::shutdown();
+				return;
+			}
 		}
 	}
 
@@ -287,9 +300,9 @@ void localPlanner::readStartPaths(){
 
 	FILE *filePtr = fopen(fileName.c_str(), "r");
 	if (filePtr == NULL) {
-		printf ("\nCannot read StartPaths files, exit.\n\n");
-		printf ("Current path folder is %s\n", path_folder_.c_str());
-		exit(1);
+		ROS_FATAL("Cannot read StartPaths files! Current path folder is %s", path_folder_.c_str());
+		ros::shutdown();
+		return;
 	}
 
 	int pointNum = readPlyHeader(filePtr);

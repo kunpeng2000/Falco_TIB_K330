@@ -1,15 +1,14 @@
 /**
-  ******************************************************************************
-  * @file    utils.h
-  * @author  Alex Liu 
-  * @version V1.0.0
-  * @date    2021/12/27
-  * @brief   utils for MobiRo @ tib_k331
-  ******************************************************************************
-  * @attention
-  *
-  ******************************************************************************
-  */
+ * @file utils.h
+ * @brief utils for MobiRo @ tib_k331
+ * @author Alex Liu
+ * @author kunpeng fan (Modified)
+ * @copyright Copyright (c) 2026. Licensed under the MIT License.
+ * * @acknowledgement 
+ * this file is referenced and adapted from the following open-source project:
+ * Repository: https://github.com/HongbiaoZ/autonomous_exploration_development_environment
+ */
+
 #ifndef UTILS_H
 #define UTILS_H
 

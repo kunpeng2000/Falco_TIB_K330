@@ -1,365 +1,211 @@
-#include <math.h>
-#include <time.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <ros/ros.h>
+/**
+ * @file pathFollow.cpp
+ * @brief ROS 1 follow path for MobiRo @ tib_k331
+ * @author Alex Liu
+ * @author kunpeng fan (Modified)
+ * @copyright Copyright (c) 2026. Licensed under the MIT License.
+ * * @acknowledgement 
+ * this file is referenced and adapted from the following open-source project:
+ * Repository: https://github.com/HongbiaoZ/autonomous_exploration_development_environment
+ */
 
-#include <message_filters/subscriber.h>
-#include <message_filters/synchronizer.h>
-#include <message_filters/sync_policies/approximate_time.h>
+#include "pathFollow.h"
 
-#include <std_msgs/Int8.h>
-#include <std_msgs/Float32.h>
-#include <nav_msgs/Path.h>
-#include <nav_msgs/Odometry.h>
-#include <geometry_msgs/TwistStamped.h>
-#include <sensor_msgs/Imu.h>
-#include <sensor_msgs/PointCloud2.h>
-#include <sensor_msgs/Joy.h>
-
-#include <tf/transform_datatypes.h>
-#include <tf/transform_broadcaster.h>
-
-#include <pcl_conversions/pcl_conversions.h>
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
-#include <pcl/filters/voxel_grid.h>
-#include <pcl/kdtree/kdtree_flann.h>
-
-using namespace std;
-
-const double PI = 3.1415926;
-
-double sensorOffsetX = 0;
-double sensorOffsetY = 0;
-int pubSkipNum = 1;
-int pubSkipCount = 0;
-bool twoWayDrive = true;
-double lookAheadDis = 0.5;
-double yawRateGain = 7.5;
-double stopYawRateGain = 7.5;
-double maxYawRate = 45.0;
-double maxSpeed = 1.0;
-double maxAccel = 1.0;
-double switchTimeThre = 1.0;
-double dirDiffThre = 0.1;
-double stopDisThre = 0.2;
-double slowDwnDisThre = 1.0;
-bool useInclRateToSlow = false;
-double inclRateThre = 120.0;
-double slowRate1 = 0.25;
-double slowRate2 = 0.5;
-double slowTime1 = 2.0;
-double slowTime2 = 2.0;
-bool useInclToStop = false;
-double inclThre = 45.0;
-double stopTime = 5.0;
-bool noRotAtStop = false;
-bool noRotAtGoal = true;
-bool autonomyMode = false;
-double autonomySpeed = 1.0;
-double joyToSpeedDelay = 2.0;
-
-float joySpeed = 0;
-float joySpeedRaw = 0;
-float joyYaw = 0;
-int safetyStop = 0;
-
-float vehicleX = 0;
-float vehicleY = 0;
-float vehicleZ = 0;
-float vehicleRoll = 0;
-float vehiclePitch = 0;
-float vehicleYaw = 0;
-
-float vehicleXRec = 0;
-float vehicleYRec = 0;
-float vehicleZRec = 0;
-float vehicleRollRec = 0;
-float vehiclePitchRec = 0;
-float vehicleYawRec = 0;
-
-float vehicleYawRate = 0;
-float vehicleSpeed = 0;
-
-double odomTime = 0;
-double joyTime = 0;
-double slowInitTime = 0;
-double stopInitTime = false;
-int pathPointID = 0;
-bool pathInit = false;
-bool navFwd = true;
-double switchTime = 0;
-
-int thres_num = 0;
-
-nav_msgs::Path path;
-
-void odomHandler(const nav_msgs::Odometry::ConstPtr& odomIn)
+PathFollower::PathFollower(ros::NodeHandle& nh, ros::NodeHandle& pnh) 
+    : nh_(nh), pnh_(pnh) 
 {
-  odomTime = odomIn->header.stamp.toSec();
+    pnh_.param("sensorOffsetX", sensor_offset_x_, 0.0);
+    pnh_.param("sensorOffsetY", sensor_offset_y_, 0.0);
+    pnh_.param("lookAheadDis", look_ahead_dis_, 0.5);
+    pnh_.param("yawRateGain", yaw_rate_gain_, 7.5);
+    pnh_.param("stopYawRateGain", stop_yaw_rate_gain_, 7.5);
+    pnh_.param("maxYawRate", max_yaw_rate_, 45.0);
+    pnh_.param("maxSpeed", max_speed_, 1.0);
+    pnh_.param("maxAccel", max_accel_, 1.0);
+    pnh_.param("twoWayDrive", two_way_drive_, true);
+    pnh_.param("stopDisThre", stop_dis_thre_, 0.2);
+    pnh_.param("slowDwnDisThre", slow_down_dis_thre_, 1.0);
+    pnh_.param("dirDiffThre", dir_diff_thre_, 0.1);
+    pnh_.param("alignYaw", align_yaw_, false);
+    
+    pnh_.param<std::string>("odomTopic", odom_topic_, "/odometry/filtered");
+    pnh_.param<std::string>("pathTopic", path_topic_, "/local_planner/path");
+    pnh_.param<std::string>("cmdTopic", cmd_topic_, "/cmd_vel");
 
-  double roll, pitch, yaw;
-  geometry_msgs::Quaternion geoQuat = odomIn->pose.pose.orientation;
-  tf::Matrix3x3(tf::Quaternion(geoQuat.x, geoQuat.y, geoQuat.z, geoQuat.w)).getRPY(roll, pitch, yaw);
+    sub_odom_ = nh_.subscribe(odom_topic_, 10, &PathFollower::odomHandler, this);
+    sub_path_ = nh_.subscribe(path_topic_, 10, &PathFollower::pathHandler, this);
+    sub_stop_ = nh_.subscribe("/stop", 10, &PathFollower::stopHandler, this);
 
-  vehicleRoll = roll;
-  vehiclePitch = pitch;
-  vehicleYaw = yaw;
-  vehicleX = odomIn->pose.pose.position.x - cos(yaw) * sensorOffsetX + sin(yaw) * sensorOffsetY;
-  vehicleY = odomIn->pose.pose.position.y - sin(yaw) * sensorOffsetX - cos(yaw) * sensorOffsetY;
-  vehicleZ = odomIn->pose.pose.position.z;
+    pub_speed_ = nh_.advertise<geometry_msgs::Twist>(cmd_topic_, 10);
 
-  if ((fabs(roll) > inclThre * PI / 180.0 || fabs(pitch) > inclThre * PI / 180.0) && useInclToStop) {
-    stopInitTime = odomIn->header.stamp.toSec();
-  }
+    timer_ = nh_.createTimer(ros::Duration(0.01), &PathFollower::controlLoop, this);
 
-  if ((fabs(odomIn->twist.twist.angular.x) > inclRateThre * PI / 180.0 || fabs(odomIn->twist.twist.angular.y) > inclRateThre * PI / 180.0) && useInclRateToSlow) {
-    slowInitTime = odomIn->header.stamp.toSec();
-  }
+    ROS_INFO("ROS 1 Path Follower Node Initialized.");
 }
 
-void pathHandler(const nav_msgs::Path::ConstPtr& pathIn)
-{
-  int pathSize = pathIn->poses.size();
-  path.poses.resize(pathSize);
-  for (int i = 0; i < pathSize; i++) {
-    path.poses[i].pose.position.x = pathIn->poses[i].pose.position.x;
-    path.poses[i].pose.position.y = pathIn->poses[i].pose.position.y;
-    path.poses[i].pose.position.z = pathIn->poses[i].pose.position.z;
-  }
+void PathFollower::odomHandler(const nav_msgs::Odometry::ConstPtr& msg) {
+    double roll, pitch, yaw;
+    tf2::Quaternion q(
+        msg->pose.pose.orientation.x,
+        msg->pose.pose.orientation.y,
+        msg->pose.pose.orientation.z,
+        msg->pose.pose.orientation.w);
+    tf2::Matrix3x3(q).getRPY(roll, pitch, yaw);
 
-  vehicleXRec = vehicleX;
-  vehicleYRec = vehicleY;
-  vehicleZRec = vehicleZ;
-  vehicleRollRec = vehicleRoll;
-  vehiclePitchRec = vehiclePitch;
-  vehicleYawRec = vehicleYaw;
-
-  pathPointID = 0;
-  pathInit = true;
+    vehicle_yaw_ = yaw;
+    vehicle_x_ = msg->pose.pose.position.x - cos(yaw) * sensor_offset_x_ + sin(yaw) * sensor_offset_y_;
+    vehicle_y_ = msg->pose.pose.position.y - sin(yaw) * sensor_offset_x_ - cos(yaw) * sensor_offset_y_;
+    
+    odom_time_ = msg->header.stamp.toSec();
 }
 
-void joystickHandler(const sensor_msgs::Joy::ConstPtr& joy)
-{
-  joyTime = ros::Time::now().toSec();
+void PathFollower::pathHandler(const nav_msgs::Path::ConstPtr& msg) {
+    if (msg->poses.empty()) return;
+    path_ = *msg;
+    
+    vehicle_x_rec_ = vehicle_x_;
+    vehicle_y_rec_ = vehicle_y_;
+    vehicle_yaw_rec_ = vehicle_yaw_;
 
-  joySpeedRaw = sqrt(joy->axes[3] * joy->axes[3] + joy->axes[4] * joy->axes[4]);
-  joySpeed = joySpeedRaw;
-  if (joySpeed > 1.0) joySpeed = 1.0;
-  if (joy->axes[4] == 0) joySpeed = 0;
-  joyYaw = joy->axes[3];
-  if (joySpeed == 0 && noRotAtStop) joyYaw = 0;
-
-  if (joy->axes[4] < 0 && !twoWayDrive) {
-    joySpeed = 0;
-    joyYaw = 0;
-  }
-
-  if (joy->axes[2] > -0.1) {
-    autonomyMode = false;
-  } else {
-    autonomyMode = true;
-  }
+    path_point_id_ = 0;
+    path_init_ = true;
 }
 
-void speedHandler(const std_msgs::Float32::ConstPtr& speed)
-{
-  double speedTime = ros::Time::now().toSec();
-
-  if (autonomyMode && speedTime - joyTime > joyToSpeedDelay && joySpeedRaw == 0) {
-    joySpeed = speed->data / maxSpeed;
-
-    if (joySpeed < 0) joySpeed = 0;
-    else if (joySpeed > 1.0) joySpeed = 1.0;
-  }
+void PathFollower::stopHandler(const std_msgs::Int8::ConstPtr& msg) {
+    safety_stop_ = msg->data;
 }
 
-void stopHandler(const std_msgs::Int8::ConstPtr& stop)
-{
-  safetyStop = stop->data;
-}
-
-int main(int argc, char** argv)
-{
-  ros::init(argc, argv, "pathFollower");
-  ros::NodeHandle nh;
-  ros::NodeHandle nhPrivate = ros::NodeHandle("~");
-
-  nhPrivate.getParam("sensorOffsetX", sensorOffsetX);
-  nhPrivate.getParam("sensorOffsetY", sensorOffsetY);
-  nhPrivate.getParam("pubSkipNum", pubSkipNum);
-  nhPrivate.getParam("twoWayDrive", twoWayDrive);
-  nhPrivate.getParam("lookAheadDis", lookAheadDis);
-  nhPrivate.getParam("yawRateGain", yawRateGain);
-  nhPrivate.getParam("stopYawRateGain", stopYawRateGain);
-  nhPrivate.getParam("maxYawRate", maxYawRate);
-  nhPrivate.getParam("maxSpeed", maxSpeed);
-  nhPrivate.getParam("maxAccel", maxAccel);
-  nhPrivate.getParam("switchTimeThre", switchTimeThre);
-  nhPrivate.getParam("dirDiffThre", dirDiffThre);
-  nhPrivate.getParam("stopDisThre", stopDisThre);
-  nhPrivate.getParam("slowDwnDisThre", slowDwnDisThre);
-  nhPrivate.getParam("useInclRateToSlow", useInclRateToSlow);
-  nhPrivate.getParam("inclRateThre", inclRateThre);
-  nhPrivate.getParam("slowRate1", slowRate1);
-  nhPrivate.getParam("slowRate2", slowRate2);
-  nhPrivate.getParam("slowTime1", slowTime1);
-  nhPrivate.getParam("slowTime2", slowTime2);
-  nhPrivate.getParam("useInclToStop", useInclToStop);
-  nhPrivate.getParam("inclThre", inclThre);
-  nhPrivate.getParam("stopTime", stopTime);
-  nhPrivate.getParam("noRotAtStop", noRotAtStop);
-  nhPrivate.getParam("noRotAtGoal", noRotAtGoal);
-  nhPrivate.getParam("autonomyMode", autonomyMode);
-  nhPrivate.getParam("autonomySpeed", autonomySpeed);
-  nhPrivate.getParam("joyToSpeedDelay", joyToSpeedDelay);
-
-  // ros::Subscriber subOdom = nh.subscribe<nav_msgs::Odometry> ("/odometry/imu", 5, odomHandler);
-  ros::Subscriber subOdom = nh.subscribe<nav_msgs::Odometry> ("/odometry/filtered", 5, odomHandler);
-
-  ros::Subscriber subPath = nh.subscribe<nav_msgs::Path> ("/local_planner/path", 5, pathHandler);
-
-  ros::Subscriber subJoystick = nh.subscribe<sensor_msgs::Joy> ("/joy", 5, joystickHandler);
-
-  ros::Subscriber subSpeed = nh.subscribe<std_msgs::Float32> ("/speed", 5, speedHandler);
-
-  ros::Subscriber subStop = nh.subscribe<std_msgs::Int8> ("/stop", 5, stopHandler);
-
-  ros::Publisher pubSpeed = nh.advertise<geometry_msgs::TwistStamped> ("/cmd_vel", 5);
-
-  geometry_msgs::TwistStamped cmd_vel;
-  cmd_vel.header.frame_id = "vehicle";
-
-  if (autonomyMode) {
-    joySpeed = autonomySpeed / maxSpeed;
-
-    if (joySpeed < 0) joySpeed = 0;
-    else if (joySpeed > 1.0) joySpeed = 1.0;
-  }
-
-  ros::Rate rate(100);
-  bool status = ros::ok();
-  while (status) {
-    ros::spinOnce();
-
-    if (pathInit) {
-      float vehicleXRel = cos(vehicleYawRec) * (vehicleX - vehicleXRec) 
-                        + sin(vehicleYawRec) * (vehicleY - vehicleYRec);
-      float vehicleYRel = -sin(vehicleYawRec) * (vehicleX - vehicleXRec) 
-                        + cos(vehicleYawRec) * (vehicleY - vehicleYRec);
-
-      int pathSize = path.poses.size();
-      float endDisX = path.poses[pathSize - 1].pose.position.x - vehicleXRel;
-      float endDisY = path.poses[pathSize - 1].pose.position.y - vehicleYRel;
-      float endDis = sqrt(endDisX * endDisX + endDisY * endDisY);
-
-      float disX, disY, dis;
-      while (pathPointID < pathSize - 1) {
-        disX = path.poses[pathPointID].pose.position.x - vehicleXRel;
-        disY = path.poses[pathPointID].pose.position.y - vehicleYRel;
-        dis = sqrt(disX * disX + disY * disY);
-        if (dis < lookAheadDis) {
-          pathPointID++;
-        } else {
-          break;
-        }
-      }
-
-      disX = path.poses[pathPointID].pose.position.x - vehicleXRel;
-      disY = path.poses[pathPointID].pose.position.y - vehicleYRel;
-      dis = sqrt(disX * disX + disY * disY);
-      float pathDir = atan2(disY, disX);
-
-      float dirDiff = vehicleYaw - vehicleYawRec - pathDir;
-      if (dirDiff > PI) dirDiff -= 2 * PI;
-      else if (dirDiff < -PI) dirDiff += 2 * PI;
-      if (dirDiff > PI) dirDiff -= 2 * PI;
-      else if (dirDiff < -PI) dirDiff += 2 * PI;
-
-      if (twoWayDrive) {
-        double time = ros::Time::now().toSec();
-        if (fabs(dirDiff) > PI / 2 && navFwd && time - switchTime > switchTimeThre) {
-          navFwd = false;
-          switchTime = time;
-        } else if (fabs(dirDiff) < PI / 2 && !navFwd && time - switchTime > switchTimeThre) {
-          navFwd = true;
-          switchTime = time;
-        }
-      }
-
-      float joySpeed2 = maxSpeed * joySpeed;
-      if (!navFwd) {
-        dirDiff += PI;
-        if (dirDiff > PI) dirDiff -= 2 * PI;
-        joySpeed2 *= -1;
-      }
-
-      if (fabs(vehicleSpeed) < 2.0 * maxAccel / 100.0) vehicleYawRate = -stopYawRateGain * dirDiff;
-      else vehicleYawRate = -yawRateGain * dirDiff;
-
-      if (vehicleYawRate > maxYawRate * PI / 180.0) vehicleYawRate = maxYawRate * PI / 180.0;
-      else if (vehicleYawRate < -maxYawRate * PI / 180.0) vehicleYawRate = -maxYawRate * PI / 180.0;
-
-      if (joySpeed2 == 0 && !autonomyMode) {
-        vehicleYawRate = maxYawRate * joyYaw * PI / 180.0;
-      } else if (pathSize <= 1 || (dis < stopDisThre && noRotAtGoal)) {
-        vehicleYawRate = 0;
-      }
-
-      if (pathSize <= 1) {
-        joySpeed2 = 0;
-      } else if (endDis / slowDwnDisThre < joySpeed) {
-        joySpeed2 *= endDis / slowDwnDisThre;
-      }
-
-      float joySpeed3 = joySpeed2;
-      if (odomTime < slowInitTime + slowTime1 && slowInitTime > 0) joySpeed3 *= slowRate1;
-      else if (odomTime < slowInitTime + slowTime1 + slowTime2 && slowInitTime > 0) joySpeed3 *= slowRate2;
-
-      if (fabs(dirDiff) < dirDiffThre && dis > stopDisThre) {
-        if (vehicleSpeed < joySpeed3) vehicleSpeed += maxAccel / 100.0;
-        else if (vehicleSpeed > joySpeed3) vehicleSpeed -= maxAccel / 100.0;
-      } else {
-        if (vehicleSpeed > 0) vehicleSpeed -= maxAccel / 100.0;
-        else if (vehicleSpeed < 0) vehicleSpeed += maxAccel / 100.0;
-      }
-
-      if (odomTime < stopInitTime + stopTime && stopInitTime > 0) {
-        vehicleSpeed = 0;
-        vehicleYawRate = 0;
-      }
-
-      if (safetyStop >= 1) vehicleSpeed = 0;
-      if (safetyStop >= 2) vehicleYawRate = 0;
-
-      pubSkipCount--;
-      if (pubSkipCount < 0) {
-        cmd_vel.header.stamp = ros::Time().fromSec(odomTime);
-        if (fabs(vehicleSpeed) <= maxAccel / 100.0) cmd_vel.twist.linear.x = 0;
-        else cmd_vel.twist.linear.x = vehicleSpeed;
-        cmd_vel.twist.angular.z = vehicleYawRate / 2;
-        if (abs(cmd_vel.twist.angular.z) < 0.3){
-          thres_num ++;
-          // std::cout << thres_num << std::endl;
-          if (thres_num < 20){
-            cmd_vel.twist.angular.z = 0;
-          }
-          else{
-            thres_num = 0;
-          }
-        } 
-        // cmd_vel.twist.angular.z = (cmd_vel.twist.angular.z > 0.1) ? cmd_vel.twist.angular.z / 2 : 0;
-        // std::cout << vehicleSpeed << "  " << vehicleYawRate << "  " << cmd_vel.twist.linear.x << "  " << cmd_vel.twist.angular.z << std::endl;
-        pubSpeed.publish(cmd_vel);
-
-        pubSkipCount = pubSkipNum;
-      }
+void PathFollower::controlLoop(const ros::TimerEvent& event) {
+    if (!path_init_){
+        ROS_WARN_THROTTLE(1.0, "No path set.");
+        return;
     }
 
-    status = ros::ok();
-    rate.sleep();
-  }
+    if (path_.poses.empty()){
+        ROS_WARN_THROTTLE(1.0, "Path is empty.");
+        return;
+    }
 
-  return 0;
+    // current pos in path's coor
+    float dx = vehicle_x_ - vehicle_x_rec_;
+    float dy = vehicle_y_ - vehicle_y_rec_;
+    float vehicle_x_rel = cos(vehicle_yaw_rec_) * dx + sin(vehicle_yaw_rec_) * dy;
+    float vehicle_y_rel = -sin(vehicle_yaw_rec_) * dx + cos(vehicle_yaw_rec_) * dy;
+
+    // distance of the path's last point
+    int path_size = path_.poses.size();
+    float end_dis_x = path_.poses[path_size - 1].pose.position.x - vehicle_x_rel;
+    float end_dis_y = path_.poses[path_size - 1].pose.position.y - vehicle_y_rel;
+    float end_dis = sqrt(end_dis_x * end_dis_x + end_dis_y * end_dis_y);
+
+    // local target point more than look_ahead_dis_ away from the current pos
+    float p_x, p_y, dis;
+    while (path_point_id_ < path_size - 1) {
+        p_x = path_.poses[path_point_id_].pose.position.x - vehicle_x_rel;
+        p_y = path_.poses[path_point_id_].pose.position.y - vehicle_y_rel;
+        dis = sqrt(p_x * p_x + p_y * p_y);
+        if (dis < look_ahead_dis_) {
+            path_point_id_++;
+        } 
+        else {
+            break;
+        }
+    }
+
+    // x, y, yaw between current pos and local target point
+    p_x = path_.poses[path_point_id_].pose.position.x - vehicle_x_rel;
+    p_y = path_.poses[path_point_id_].pose.position.y - vehicle_y_rel;
+    dis = sqrt(p_x * p_x + p_y * p_y);
+    
+    float path_dir = 0.0;
+    if (align_yaw_ && end_dis < stop_dis_thre_) {
+        tf2::Quaternion q_target(
+            path_.poses[path_size - 1].pose.orientation.x,
+            path_.poses[path_size - 1].pose.orientation.y,
+            path_.poses[path_size - 1].pose.orientation.z,
+            path_.poses[path_size - 1].pose.orientation.w);
+        double roll, pitch, target_yaw_global;
+        tf2::Matrix3x3(q_target).getRPY(roll, pitch, target_yaw_global);
+        
+        path_dir = target_yaw_global - vehicle_yaw_rec_;
+        
+    } else {
+        path_dir = atan2(p_y, p_x);
+    }
+
+    float dir_diff = vehicle_yaw_ - vehicle_yaw_rec_ - path_dir;
+    while (dir_diff > M_PI) dir_diff -= 2 * M_PI;
+    while (dir_diff < -M_PI) dir_diff += 2 * M_PI;
+
+    bool nav_fwd = true;
+    if (two_way_drive_ && fabs(dir_diff) > M_PI / 2) {
+        if ((align_yaw_ && end_dis >= stop_dis_thre_) || (!align_yaw_)){
+            nav_fwd = false;
+            dir_diff += (dir_diff > 0) ? -M_PI : M_PI;
+        }
+    }
+
+    // target speed
+    float target_speed = max_speed_;
+    if (path_size <= 1) {
+        target_speed = 0;
+    } 
+    else if (end_dis < slow_down_dis_thre_) {
+        target_speed *= (end_dis / slow_down_dis_thre_);
+    }
+    if (!nav_fwd) {
+        target_speed *= -1.0;
+    }
+
+    // speed ramp
+    if (fabs(dir_diff) < dir_diff_thre_ && dis > stop_dis_thre_) {
+        if (current_v_ < target_speed) {
+            current_v_ = std::min(current_v_ + max_accel_ / 100.0, (double)target_speed);
+        }
+         else if (current_v_ > target_speed) {
+            current_v_ = std::max(current_v_ - max_accel_ / 100.0, (double)target_speed);
+        }
+    } 
+    else {
+        if (current_v_ > 0) {
+            current_v_ = std::max(0.0, current_v_ - max_accel_ / 100.0);
+        }
+        else if (current_v_ < 0) {
+            current_v_ = std::min(0.0, current_v_ + max_accel_ / 100.0);
+        }
+    }
+
+    // overcome the large static friction during on-the-spot turning and ensure lateral stability at high speeds
+    float stop_speed_threshold = 2.0 * max_accel_ / 100.0;
+    if (fabs(current_v_) < stop_speed_threshold) {
+        current_w_ = -stop_yaw_rate_gain_ * dir_diff;
+    } 
+    else {
+        current_w_ = -yaw_rate_gain_ * dir_diff;
+    }
+
+    // Limit acceleration between [min_w, max_w]
+    double max_w_rad = max_yaw_rate_ * M_PI / 180.0;
+    current_w_ = std::max(-max_w_rad, std::min(current_w_, max_w_rad));
+
+    // safe stop
+    if (safety_stop_ >= 1) current_v_ = 0;
+    if (safety_stop_ >= 2) current_w_ = 0;
+
+    // pub the msg
+    geometry_msgs::Twist cmd_msg;
+    cmd_msg.linear.x = current_v_;
+    cmd_msg.angular.z = current_w_;
+    pub_speed_.publish(cmd_msg);
+}
+
+int main(int argc, char** argv) {
+    ros::init(argc, argv, "path_follower");
+    ros::NodeHandle nh;
+    ros::NodeHandle pnh("~");
+
+    PathFollower follower(nh, pnh);
+
+    ros::spin();
+    return 0;
 }
