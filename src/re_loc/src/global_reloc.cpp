@@ -77,20 +77,20 @@ bool UnifiedGlobalRelocalizer::localize(pcl::PointCloud<pcl::PointXYZ>::Ptr glob
     pcl::PointCloud<pcl::PointXYZ>::Ptr local_downsampled(new pcl::PointCloud<pcl::PointXYZ>());
     pcl::PointCloud<pcl::PointXYZ>::Ptr target_downsampled(new pcl::PointCloud<pcl::PointXYZ>());
     pcl::VoxelGrid<pcl::PointXYZ> voxel_filter;
-    float leaf_size = 0.4f; 
+    float leaf_size = 0.1f; 
     voxel_filter.setLeafSize(leaf_size, leaf_size, leaf_size);
 
-    voxel_filter.setInputCloud(local_initial_aligned);
-    voxel_filter.filter(*local_downsampled);
+    // voxel_filter.setInputCloud(local_initial_aligned);
+    // voxel_filter.filter(*local_downsampled);
 
     voxel_filter.setInputCloud(submap); 
     voxel_filter.filter(*target_downsampled);
 
-    std::cout << "Source points before/after: " << local_initial_aligned->size() << " -> " << local_downsampled->size() << std::endl;
+    // std::cout << "Source points before/after: " << local_initial_aligned->size() << " -> " << local_downsampled->size() << std::endl;
     std::cout << "Target points before/after: " << submap->size() << " -> " << target_downsampled->size() << std::endl;
 
     pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
-    icp.setInputSource(local_downsampled);
+    icp.setInputSource(local_initial_aligned);
     icp.setInputTarget(target_downsampled);               
     icp.setMaxCorrespondenceDistance(icp_thresh_); 
     icp.setMaximumIterations(icp_iters_);
@@ -108,7 +108,7 @@ bool UnifiedGlobalRelocalizer::localize(pcl::PointCloud<pcl::PointXYZ>::Ptr glob
         return true;
     } 
     else {
-        std::cout << "=> ICP did not converge." << std::endl;
+        std::cout << "=> ICP did not converge: " << icp.getFitnessScore() << std::endl;
         return false;
     }     
 }
@@ -129,7 +129,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr UnifiedGlobalRelocalizer::extractSubmap(
             submap->points.push_back(global_map->points[pointIdxRadiusSearch[i]]);
         }
     }
-    
+    std::cout << submap->points.size() << submap_radius_ << std::endl;
     submap->width = submap->points.size();
     submap->height = 1;
     submap->is_dense = true;

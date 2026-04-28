@@ -9,9 +9,9 @@
 		<rosparam file="$(find fast_livo)/config/camera_pinhole_208.yaml" />
 	</node>
 	
-	<group if="$(arg rviz)">
+	<!-- <group if="$(arg rviz)">
 		<node launch-prefix="nice" pkg="rviz" type="rviz" name="rviz" args="-d $(find fast_livo)/rviz_cfg/fast_livo2.rviz" />
-	</group>
+	</group> -->
 	
 	<!-- <node pkg="image_transport" type="republish" name="republish" args="compressed in:=/hikrobot_camera/rgb raw out:=/hikrobot_camera/rgb" output="screen" respawn="true"/> -->
 
