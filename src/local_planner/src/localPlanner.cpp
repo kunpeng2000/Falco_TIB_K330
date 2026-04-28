@@ -74,48 +74,48 @@ void localPlanner::ParamsHandler(const ros::NodeHandle &nh) {
 	nh.getParam("sensor_offset_x", sensor_offset_x_);
 	nh.getParam("sensor_offset_y", sensor_offset_y_);
 	
-	nh.getParam("laser_voxel_size", laser_voxel_size_);
-	nh.getParam("terrain_voxel_size", terrain_voxel_size_);
-	nh.getParam("min_rel_z", min_rel_z_);
+	nh.getParam("laser_voxel_size", laser_voxel_size_); // dowmsample the point cloud
+	nh.getParam("terrain_voxel_size", terrain_voxel_size_); // voxel size used for the terrain analysis
+	nh.getParam("min_rel_z", min_rel_z_); // the minimum Z-value relative to the sensor for the croping
 	nh.getParam("max_rel_z", max_rel_z_);
 
 	nh.getParam("twoway_drive_flag", twoway_drive_flag_);
-	nh.getParam("use_terrain_analysis_flag", use_terrain_analysis_flag_);
-	nh.getParam("check_obs_flag", check_obs_flag_); //
-	nh.getParam("check_rot_obs_flag", check_rot_obs_flag_); //
-	nh.getParam("use_cost_flag", use_cost_flag_);
-	nh.getParam("dir_to_robot_flag", dir_to_robot_flag_);
-	nh.getParam("autonomy_mode_flag", autonomy_mode_flag_);
-	nh.getParam("path_scale_by_speed_flag", path_scale_by_speed_flag_);
-	nh.getParam("path_range_by_speed_flag", path_range_by_speed_flag_); 
-	nh.getParam("path_crop_by_goal_flag", path_crop_by_goal_flag_);
-	nh.getParam("mannual_nav_goal_flag", mannual_nav_goal_flag_);
+	nh.getParam("use_terrain_analysis_flag", use_terrain_analysis_flag_); // whether use the terrain analysis
+	nh.getParam("check_obs_flag", check_obs_flag_); // enables collision checking against obstacles for forward-moving candidate paths //
+	nh.getParam("check_rot_obs_flag", check_rot_obs_flag_); // enables collision checking while the robot is rotating in place //
+	nh.getParam("use_cost_flag", use_cost_flag_); // enables a "cost-scoring" system, instead of binary "collision vs. free"
+	nh.getParam("dir_to_robot_flag", dir_to_robot_flag_); // evaluates path directions relative to the robot's current heading
+	nh.getParam("autonomy_mode_flag", autonomy_mode_flag_); // if the robot is operating in full autonomous exploration mode
+	nh.getParam("path_scale_by_speed_flag", path_scale_by_speed_flag_); // dynamically scales the length of candidate paths based on the current speed 
+	nh.getParam("path_range_by_speed_flag", path_range_by_speed_flag_); // dynamically adjusts the forward search distance/range based on the current speed
+	nh.getParam("path_crop_by_goal_flag", path_crop_by_goal_flag_); // crops the generated path exactly at the goal point to prevent the robot from overshooting
+	nh.getParam("mannual_nav_goal_flag", mannual_nav_goal_flag_); // allows the planner to accept manually published goals
 
-	nh.getParam("adjacent_range", adjacent_range_); //
-	nh.getParam("obs_height_thres", obs_height_thres_);
-	nh.getParam("ground_height_thres", ground_height_thres_); //
-	nh.getParam("cost_height_thres", cost_height_thres_); //
-	nh.getParam("min_cost_score", min_cost_score_);
-	nh.getParam("dir_weight", dir_weight_);
+	nh.getParam("adjacent_range", adjacent_range_); // search radius for finding obstacles in the neighborhood of a path point //
+	nh.getParam("obs_height_thres", obs_height_thres_); // height threshold above which points are strictly considered impassable obstacles
+	nh.getParam("ground_height_thres", ground_height_thres_); // height threshold used to distinguish flat ground from minor bumps or slopes //
+	nh.getParam("cost_height_thres", cost_height_thres_); // height threshold used to calculate penalty scores in cost-scoring mode; points below this but above the ground threshold add cost to a path //
+	nh.getParam("min_cost_score", min_cost_score_); // minimum acceptable cost score for a path to be considered viable; paths scoring below this are discarded
+	nh.getParam("dir_weight", dir_weight_); // weighting factor that penalizes paths pointing away from the target goal direction
 	
-	nh.getParam("point_per_path_thres", point_per_path_thres_);
-	nh.getParam("goal_angle_diff_thres", goal_angle_diff_thres_);
+	nh.getParam("point_per_path_thres", point_per_path_thres_); // maximum number of obstacle points a candidate path is allowed to intersect before it is marked as blocked
+	nh.getParam("goal_angle_diff_thres", goal_angle_diff_thres_); // maximum allowed angular difference between a candidate path's direction and the direct line-of-sight direction to the goal
 
-	nh.getParam("path_scale", path_scale_); //
-	nh.getParam("min_path_scale", min_path_scale_);
-	nh.getParam("min_path_range", min_path_range_); //
-	nh.getParam("path_scale_step", path_scale_step_);
-	nh.getParam("path_range_step", path_range_step_);
+	nh.getParam("path_scale", path_scale_); // base multiplier used to scale the pre-computed path templates to fit the environment
+	nh.getParam("min_path_scale", min_path_scale_); // absolute minimum scale multiplier the planner is allowed to reduce paths to when searching for a valid route
+	nh.getParam("min_path_range", min_path_range_); // minimum forward distance the planner must evaluate to consider a path safe
+	nh.getParam("path_scale_step", path_scale_step_); // increment/decrement step size the planner uses to shrink the path scale if it cannot find a clear path at the current scale
+	nh.getParam("path_range_step", path_range_step_); // increment/decrement step size used to reduce the search range when trying to find a valid local route
 	
-	nh.getParam("autonomy_speed", autonomy_speed_);
+	nh.getParam("autonomy_speed", autonomy_speed_); // default target driving speed when the robot is operating in autonomous mode
 	nh.getParam("max_speed", max_speed_);
 	
-	nh.getParam("goal_x", goal_x_);
+	nh.getParam("goal_x", goal_x_); // default or initial X-coordinate of the goal
 	nh.getParam("goal_y", goal_y_);
-	nh.getParam("goal_clear_range", goal_clear_range_); //
+	nh.getParam("goal_clear_range", goal_clear_range_); // radius around the final goal point where obstacle checking is relaxed to allow the robot to physically reach the target coordinates //
 
 	nh.getParam("path_folder", path_folder_);
-	nh.getParam("path_frame_id", path_frame_id_);
+	nh.getParam("path_frame_id", path_frame_id_); // frame ID in which the generated paths are published to ROS
 }
 
 void localPlanner::checkReachGoal(float x, float y, float z){

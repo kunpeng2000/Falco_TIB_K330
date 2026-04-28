@@ -67,34 +67,34 @@ TerrainAnalysis::~TerrainAnalysis() {
 }
 
 void TerrainAnalysis::ParamsHandler(const ros::NodeHandle &nh) {
-	nh.param("voxel_point_update_thre", terrrain_voxel_num_update_thre_, 100);
-	nh.param("terrain_voxel_time_update_thre", terrain_voxel_time_update_thre_, 2.0);
-	nh.param("downsample_voxel_size", downsample_voxel_size_, 0.05);
-	nh.param("min_rel_z", min_rel_z_, -0.8); //
+	nh.param("voxel_point_update_thre", terrrain_voxel_num_update_thre_, 100); // hreshold for the number of points accumulated in a terrain voxel before it triggers a downsampling/update
+	nh.param("terrain_voxel_time_update_thre", terrain_voxel_time_update_thre_, 2.0); // time threshold (in seconds) to force a voxel update/downsample even if the point count threshold hasn't been reached
+	nh.param("downsample_voxel_size", downsample_voxel_size_, 0.05); // leaf size used by the VoxelGrid filter
+	nh.param("min_rel_z", min_rel_z_, -0.8); // minimum relative height bounds used to crop the incoming point cloud //
 	nh.param("max_rel_z", max_rel_z_, 0.8); //
-	nh.param("dis_ratio_z_", dis_ratio_z_, 0.2); //
-	nh.param("decay_time", decay_time_, 5.0);
-	nh.param("no_decay_dis", no_decay_dis_, 4.0);
+	nh.param("dis_ratio_z_", dis_ratio_z_, 0.2); // ratio that linearly expands the Z-height filtering bounds based on the horizontal distance //
+	nh.param("decay_time", decay_time_, 5.0); // time after which older points in the map are considered stale and are removed (decayed)
+	nh.param("no_decay_dis", no_decay_dis_, 4.0); // radius around the robot within which points are protected and will not decay, regardless of their age
 
-	nh.param("robot_height", robot_height_, 0.6);
-	nh.param("remove_dyn_obs_flag", remove_dyn_obs_flag_, true);
-	nh.param("min_dyn_obs_dis", min_dyn_obs_dis_, 0.3); //
+	nh.param("robot_height", robot_height_, 0.6); // assumed physical height of the robot
+	nh.param("remove_dyn_obs_flag", remove_dyn_obs_flag_, true); // boolean flag that toggles the dynamic obstacle removal feature on or off
+	nh.param("min_dyn_obs_dis", min_dyn_obs_dis_, 0.3); // distance, relative Z-height, and angle thresholds used to spatially filter and identify candidate points belonging to moving obstacles //
 	nh.param("min_dyn_obs_rel_z", min_dyn_obs_rel_z_, 0.0);
 	nh.param("min_dyn_obs_angle", min_dyn_obs_angle_, 0.0); //
-	nh.param("min_dyn_obs_fov", min_dyn_obs_fov_, -16.0); //
+	nh.param("min_dyn_obs_fov", min_dyn_obs_fov_, -16.0); // FOV angular bounds within which points are checked for dynamic behavior /
 	nh.param("max_dyn_obs_fov", max_dyn_obs_fov_, 16.0); //
-	nh.param("min_dyn_obs_pt_num", min_dyn_obs_pt_num_, 0);
+	nh.param("min_dyn_obs_pt_num", min_dyn_obs_pt_num_, 0); // minimum point counts required to officially classify a cluster or a voxel as containing a dynamic obstacle
 
-	nh.param("use_sorting", use_sorting_flag_, true);
-	nh.param("quantile_z", quantile_z_, 0.25);	
-	nh.param("max_ground_lift", max_ground_lift_, 0.2);
-	nh.param("limit_ground_lift", limit_ground_lift_flag_, false); //
+	nh.param("use_sorting", use_sorting_flag_, true); // enables statistical sorting to find the ground plane (using quantiles) instead of simply picking the absolute lowest point
+	nh.param("quantile_z", quantile_z_, 0.25); // quantile value used to determine the ground elevation within a sorted list of voxel heights
+	nh.param("max_ground_lift", max_ground_lift_, 0.2); // maximum permissible height increase (lift) between the determined ground point and the lowest point
+	nh.param("limit_ground_lift", limit_ground_lift_flag_, false); // if true, clamps the ground elevation to the max_ground_lift threshold //
 
 	nh.param("min_dyn_obs_pt_thres", min_dyn_obs_pt_thres_, 10);
-	nh.param("consider_drop", consider_drop_flag_, false);
-	nh.param("min_block_pt_num", min_block_pt_num_, 0); //
+	nh.param("consider_drop", consider_drop_flag_, false); // flag that determines whether negative elevations (drops, holes, cliffs) should be evaluated as obstacles
+	nh.param("min_block_pt_num", min_block_pt_num_, 0); // minimum number of points required in a voxel to consider it valid data before checking if it blocks the path //
 
-	nh.param("no_data_obstacle", no_data_obstacle_, false);
+	nh.param("no_data_obstacle", no_data_obstacle_, false); // boolean flag that treats blind spots or areas lacking sensor data as impassable obstacles
 	nh.param("no_data_block_skip_num", no_data_block_skip_num_, 0);
 
 	nh.param<std::string>("sub_odom_topic", sub_odom_topic_, "/Odometry");

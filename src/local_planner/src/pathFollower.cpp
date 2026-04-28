@@ -12,21 +12,20 @@
 #include "pathFollow.h"
 
 PathFollower::PathFollower(ros::NodeHandle& nh, ros::NodeHandle& pnh) 
-    : nh_(nh), pnh_(pnh) 
-{
-    pnh_.param("sensorOffsetX", sensor_offset_x_, 0.0);
+    : nh_(nh), pnh_(pnh) {
+    pnh_.param("sensorOffsetX", sensor_offset_x_, 0.0); // offset of the sensor center relative to the robot's center
     pnh_.param("sensorOffsetY", sensor_offset_y_, 0.0);
-    pnh_.param("lookAheadDis", look_ahead_dis_, 0.5);
-    pnh_.param("yawRateGain", yaw_rate_gain_, 7.5);
-    pnh_.param("stopYawRateGain", stop_yaw_rate_gain_, 7.5);
+    pnh_.param("lookAheadDis", look_ahead_dis_, 0.5); // look-ahead distance
+    pnh_.param("yawRateGain", yaw_rate_gain_, 7.5); // angular velocity gain during normal driving
+    pnh_.param("stopYawRateGain", stop_yaw_rate_gain_, 7.5); // angular velocity gain when stopping/rotating in place
     pnh_.param("maxYawRate", max_yaw_rate_, 45.0);
     pnh_.param("maxSpeed", max_speed_, 1.0);
     pnh_.param("maxAccel", max_accel_, 1.0);
-    pnh_.param("twoWayDrive", two_way_drive_, true);
-    pnh_.param("stopDisThre", stop_dis_thre_, 0.2);
-    pnh_.param("slowDwnDisThre", slow_down_dis_thre_, 1.0);
-    pnh_.param("dirDiffThre", dir_diff_thre_, 0.1);
-    pnh_.param("alignYaw", align_yaw_, false);
+    pnh_.param("twoWayDrive", two_way_drive_, true); // two-way drive enable
+    pnh_.param("stopDisThre", stop_dis_thre_, 0.2); // stop distance threshold
+    pnh_.param("slowDwnDisThre", slow_down_dis_thre_, 1.0); // slow-down distance threshold 
+    pnh_.param("dirDiffThre", dir_diff_thre_, 0.1); // direction difference threshold, used to determine if an "in-place rotation" is needed.
+    pnh_.param("alignYaw", align_yaw_, false); // align heading enable. If true, after reaching the target position, the robot will continue to rotate in place to align with the final Goal Yaw.
     
     pnh_.param<std::string>("odomTopic", odom_topic_, "/odometry/filtered");
     pnh_.param<std::string>("pathTopic", path_topic_, "/local_planner/path");
