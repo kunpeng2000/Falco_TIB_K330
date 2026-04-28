@@ -129,7 +129,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr UnifiedGlobalRelocalizer::extractSubmap(
             submap->points.push_back(global_map->points[pointIdxRadiusSearch[i]]);
         }
     }
-    std::cout << submap->points.size() << submap_radius_ << std::endl;
+    // std::cout << submap->points.size() << submap_radius_ << std::endl;
     submap->width = submap->points.size();
     submap->height = 1;
     submap->is_dense = true;
