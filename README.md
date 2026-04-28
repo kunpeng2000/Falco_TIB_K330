@@ -7,8 +7,9 @@ This project implements an autonomous navigation system based on Falco, integrat
 This system primarily relies on the following four core coordinate frames:
 1. **`map`**: The global coordinate frame. The global point cloud map is built in this frame.
 2. **`camera_init`**: The odometry initialization frame (i.e., the odometry origin when the robot starts).
-3. **`base_link`**: The high-frequency odometry (robot body) frame.
-4. **`aft_mapped`**: The FAST-LIVO2 low-frequency odometry frame.
+3. **`start`**: The result of relocalization (Mid360 tilted placement).
+4. **`base_link`**: The high-frequency odometry (robot body) frame.
+5. **`aft_mapped`**: The FAST-LIVO2 low-frequency odometry frame.
 
 ---
 
@@ -40,7 +41,7 @@ In an environment with an existing prior map, when the robot restarts, this node
 roslaunch init_relocalizer re_loc.launch
 ```
 
-**Description:** Start FAST-LIVO2. The system will extract the current scan frame, perform Scan Context matching with the prior data, calculate the current starting position, and publish the TF transformation between `map` and `camera_init`.
+**Description:** Start FAST-LIVO2. The system will extract the current scan frame, perform Scan Context matching with the prior data, calculate the current starting position, and publish the TF transformation between `map` and `start`.
 > **💡 Tip:** When the terminal outputs **`Published AVERAGED pose`**, it indicates that the multi-frame averaged relocalization is complete and the system pose has converged. The downstream navigation module can then be launched safely.
 
 **Core Parameters:**

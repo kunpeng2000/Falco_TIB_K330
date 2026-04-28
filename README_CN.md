@@ -3,9 +3,10 @@
 
 坐标系说明：
 1. `map`全局坐标系，全局点云在该坐标系下
-2. `camera_init`里程计起点坐标系（即机器人出发时的里程计原点）
-3. `base_link`高速里程计坐标系
-4. `aft_mapped`FAST-LIVO2低速里程计坐标系
+2. `start`重定位结果（倾斜雷达）
+3. `camera_init`里程计起点坐标系（即机器人出发时的里程计原点）
+4. `base_link`高速里程计坐标系
+5. `aft_mapped`FAST-LIVO2低速里程计坐标系
 
 ## 流程
 ### 全局地图及离线帧保存
@@ -29,7 +30,7 @@
 
 `roslaunch init_relocalizer re_loc.launch`
 
-启动 FAST-LIVO2，系统会提取当前扫描帧并与先验数据进行 Scan Context 匹配，计算出此时的起点位置，发布`map`和`camera_init`之间tf。
+启动 FAST-LIVO2，系统会提取当前扫描帧并与先验数据进行 Scan Context 匹配，计算出此时的起点位置，发布`map`和`start`之间tf。
 
 当终端输出**Published AVERAGED pose**时，表示多帧平均重定位已完成，系统位姿收敛，此时即可开启下游导航模块。
 
