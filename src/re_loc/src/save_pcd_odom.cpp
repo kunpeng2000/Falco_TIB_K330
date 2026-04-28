@@ -1,3 +1,10 @@
+/**
+ * @file sasve_pcd_odom.cpp
+ * @brief Subscribe the pc and odom msg then save them.
+ * @author kunpeng fan
+ * * @copyright Copyright (c) 2026. Licensed under the MIT License.
+ */
+
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <nav_msgs/Odometry.h>

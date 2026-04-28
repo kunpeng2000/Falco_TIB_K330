@@ -2,7 +2,7 @@
   <name>terrain_analysis</name>
   <version>0.0.1</version>
   <description>Terrain Analysis</description>
-  <maintainer email="zhangji@cmu.edu">Ji Zhang</maintainer>
+  <maintainer email="mail@gmail.com">Name</maintainer>
   <license>BSD</license>
 
   <buildtool_depend>catkin</buildtool_depend>

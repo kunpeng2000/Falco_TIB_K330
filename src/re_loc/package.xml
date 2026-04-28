@@ -4,7 +4,7 @@
   <version>0.0.1</version>
   <description>The online_relocalizer package for global relocalization</description>
 
-  <maintainer email="user@todo.todo">Your Name</maintainer>
+  <maintainer email="user@todo.todo">Name</maintainer>
   <license>MIT</license>
 
   <buildtool_depend>catkin</buildtool_depend>

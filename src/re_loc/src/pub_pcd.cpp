@@ -1,3 +1,10 @@
+/**
+ * @file pub_pcd.cpp
+ * @brief Read the pcd file then publish.
+ * @author kunpeng fan
+ * * @copyright Copyright (c) 2026. Licensed under the MIT License.
+ */
+
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <pcl/io/pcd_io.h>
