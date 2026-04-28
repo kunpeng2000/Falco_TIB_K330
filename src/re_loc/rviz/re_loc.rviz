@@ -6,9 +6,8 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
-        - /PointCloud22
-        - /Axes1
-        - /Axes2
+        - /Path1
+        - /Path1/Status1
       Splitter Ratio: 0.5
     Tree Height: 471
   - Class: rviz/Selection
@@ -83,34 +82,6 @@ Visualization Manager:
       Use rainbow: true
       Value: true
     - Alpha: 1
-      Autocompute Intensity Bounds: true
-      Autocompute Value Bounds:
-        Max Value: 10
-        Min Value: -10
-        Value: true
-      Axis: Z
-      Channel Name: intensity
-      Class: rviz/PointCloud2
-      Color: 252; 233; 79
-      Color Transformer: FlatColor
-      Decay Time: 0
-      Enabled: true
-      Invert Rainbow: false
-      Max Color: 255; 255; 255
-      Min Color: 0; 0; 0
-      Name: PointCloud2
-      Position Transformer: XYZ
-      Queue Size: 10
-      Selectable: true
-      Size (Pixels): 3
-      Size (m): 0.009999999776482582
-      Style: Flat Squares
-      Topic: /pub_pcd
-      Unreliable: false
-      Use Fixed Frame: true
-      Use rainbow: true
-      Value: true
-    - Alpha: 1
       Class: rviz/Axes
       Enabled: true
       Length: 1
@@ -127,6 +98,30 @@ Visualization Manager:
       Radius: 0.10000000149011612
       Reference Frame: aft_mapped
       Show Trail: false
+      Value: true
+    - Alpha: 1
+      Buffer Length: 1
+      Class: rviz/Path
+      Color: 25; 255; 0
+      Enabled: true
+      Head Diameter: 0.30000001192092896
+      Head Length: 0.20000000298023224
+      Length: 0.30000001192092896
+      Line Style: Lines
+      Line Width: 0.029999999329447746
+      Name: Path
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Pose Color: 255; 85; 255
+      Pose Style: None
+      Queue Size: 10
+      Radius: 0.029999999329447746
+      Shaft Diameter: 0.10000000149011612
+      Shaft Length: 0.10000000149011612
+      Topic: /local_planner/path
+      Unreliable: false
       Value: true
   Enabled: true
   Global Options:
@@ -155,7 +150,7 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: -2.1200029850006104
+      Angle: -1.5750044584274292
       Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
@@ -167,8 +162,8 @@ Visualization Manager:
       Near Clip Distance: 0.009999999776482582
       Scale: 21.416629791259766
       Target Frame: <Fixed Frame>
-      X: 8.910140991210938
-      Y: -14.3289155960083
+      X: 1.0219858884811401
+      Y: -6.67300271987915
     Saved: ~
 Window Geometry:
   Displays:

@@ -93,7 +93,7 @@
     <param name="joyToSpeedDelay" value="$(arg joyToSpeedDelay)" />
   </node>
 
-  <node pkg="tf" type="static_transform_publisher" name="vehicleTransPublisher" args="-$(arg sensorOffsetX) -$(arg sensorOffsetY) 0 0 -0.2618 0 /base_link /vehicle 1"/>
+  <node pkg="tf" type="static_transform_publisher" name="vehicleTransPublisher" args="-$(arg sensorOffsetX) -$(arg sensorOffsetY) 0 0 -0.2618 0 /base_link /vehicle 10"/>
   <!-- <node pkg="tf" type="static_transform_publisher" name="vehicleTransPublisher" args="-$(arg sensorOffsetX) -$(arg sensorOffsetY) 0 0 0 0 /body_fastlio /vehicle 1000"/> -->
 
   <!-- <node pkg="tf" type="static_transform_publisher" name="velodyneTransPublisher" args="-0 -0 0 0 0 0 /sensor /velodyne 1000"/> -->

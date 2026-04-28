@@ -5,6 +5,6 @@
 
   <include file="$(find local_planner)/launch/local_planner.launch" />
 
-  <param name="/use_sim_time" value="false" />
+  <param name="/use_sim_time" value="true" />
 
 </launch>
